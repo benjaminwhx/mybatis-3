@@ -52,6 +52,7 @@ public class DefaultSqlSession implements SqlSession {
   private final Executor executor;
 
   private final boolean autoCommit;
+  // 数据是否脏了，update会把它变为true，提交后会恢复为false
   private boolean dirty;
   private List<Cursor<?>> cursorList;
 
@@ -313,10 +314,23 @@ public class DefaultSqlSession implements SqlSession {
     cursorList.add(cursor);
   }
 
+  /**
+   * 是否需要commit或rollback
+   * 1、不自动提交 && 刚刚update过
+   * 2、force == true
+   * 上面两个都会返回true
+   * @param force
+   * @return
+   */
   private boolean isCommitOrRollbackRequired(boolean force) {
     return (!autoCommit && dirty) || force;
   }
 
+  /**
+   * 转换集合或数组的参数
+   * @param object
+   * @return
+   */
   private Object wrapCollection(final Object object) {
     if (object instanceof Collection) {
       StrictMap<Object> map = new StrictMap<Object>();

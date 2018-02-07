@@ -34,20 +34,18 @@ public class ParamNameResolver {
   private static final String GENERIC_NAME_PREFIX = "param";
 
   /**
-   * <p>
-   * The key is the index and the value is the name of the parameter.<br />
-   * The name is obtained from {@link Param} if specified. When {@link Param} is not specified,
-   * the parameter index is used. Note that this index could be different from the actual index
-   * when the method has special parameters (i.e. {@link RowBounds} or {@link ResultHandler}).
-   * </p>
-   * <ul>
-   * <li>aMethod(@Param("M") int a, @Param("N") int b) -&gt; {{0, "M"}, {1, "N"}}</li>
-   * <li>aMethod(int a, int b) -&gt; {{0, "0"}, {1, "1"}}</li>
-   * <li>aMethod(int a, RowBounds rb, int b) -&gt; {{0, "0"}, {2, "1"}}</li>
-   * </ul>
+   * key: 参数下标表示第几个参数
+   * value：参数下标表示第几个参数（和key可能不同，看下面的例子）
+   *
+   * aMethod(@Param("M") int a, @Param("N") int b) -&gt; {{0, "M"}, {1, "N"}}
+   * aMethod(int a, int b) -&gt; {{0, "0"}, {1, "1"}}
+   * aMethod(int a, RowBounds rb, int b) -&gt; {{0, "0"}, {2, "1"}}
    */
   private final SortedMap<Integer, String> names;
 
+  /**
+   * 参数里是否有@Param注解
+   */
   private boolean hasParamAnnotation;
 
   public ParamNameResolver(Configuration config, Method method) {
@@ -58,7 +56,7 @@ public class ParamNameResolver {
     // get names from @Param annotations
     for (int paramIndex = 0; paramIndex < paramCount; paramIndex++) {
       if (isSpecialParameter(paramTypes[paramIndex])) {
-        // skip special parameters
+        // 跳过特殊参数，不处理
         continue;
       }
       String name = null;
@@ -69,14 +67,16 @@ public class ParamNameResolver {
           break;
         }
       }
+      /**
+       * 1、优先使用@Param的value值作为参数名
+       * 2、如果使用jdk1.8，使用参数的字符串名作为参数名
+       * 3、最后使用参数的下标（0、1、2...）作为参数名
+       */
       if (name == null) {
-        // @Param was not specified.
         if (config.isUseActualParamName()) {
           name = getActualParamName(method, paramIndex);
         }
         if (name == null) {
-          // use the parameter index as the name ("0", "1", ...)
-          // gcode issue #71
           name = String.valueOf(map.size());
         }
       }
@@ -92,6 +92,11 @@ public class ParamNameResolver {
     return null;
   }
 
+  /**
+   * 参数类型是 RouBounds 或者 ResultHandler
+   * @param clazz
+   * @return
+   */
   private static boolean isSpecialParameter(Class<?> clazz) {
     return RowBounds.class.isAssignableFrom(clazz) || ResultHandler.class.isAssignableFrom(clazz);
   }
@@ -103,21 +108,23 @@ public class ParamNameResolver {
     return names.values().toArray(new String[0]);
   }
 
-  /**
-   * <p>
-   * A single non-special parameter is returned without a name.<br />
-   * Multiple parameters are named using the naming rule.<br />
-   * In addition to the default names, this method also adds the generic names (param1, param2,
-   * ...).
-   * </p>
-   */
   public Object getNamedParams(Object[] args) {
     final int paramCount = names.size();
     if (args == null || paramCount == 0) {
       return null;
     } else if (!hasParamAnnotation && paramCount == 1) {
+      // 只有一个参数并且没有@Param注解，直接返回参数的值
       return args[names.firstKey()];
     } else {
+      /**
+       * 每一个参数有两个key对应
+       * 1、key：下标index第几个参数 value：参数的值
+       * 2、key：param_index（index从1开始） value：参数的值
+       *
+       * 例如：method(String a)
+       *  key: 0 value: "test"
+       *  key: param_1 value: "test"
+       */
       final Map<String, Object> param = new ParamMap<Object>();
       int i = 0;
       for (Map.Entry<Integer, String> entry : names.entrySet()) {

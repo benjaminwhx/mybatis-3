@@ -85,8 +85,11 @@ public abstract class BaseStatementHandler implements StatementHandler {
     ErrorContext.instance().sql(boundSql.getSql());
     Statement statement = null;
     try {
+      // 1、初始化statement
       statement = instantiateStatement(connection);
+      // 2、设置超时时间
       setStatementTimeout(statement, transactionTimeout);
+      // 3、设置fetchSize
       setFetchSize(statement);
       return statement;
     } catch (SQLException e) {
@@ -98,8 +101,24 @@ public abstract class BaseStatementHandler implements StatementHandler {
     }
   }
 
+  /**
+   * 初始化statement
+   * @param connection
+   * @return
+   * @throws SQLException
+   */
   protected abstract Statement instantiateStatement(Connection connection) throws SQLException;
 
+  /**
+   * 设置statement的queryTimeout，默认不设置
+   * 1、优先使用mapper.xml中指定的statement上配置的timeout
+   * 2、其次使用默认配置的timeout
+   * 最后检查是否存在事务存活超时时间，重新设置queryTimeout
+   *
+   * @param stmt
+   * @param transactionTimeout 事务的超时时间，默认spring中才有
+   * @throws SQLException
+   */
   protected void setStatementTimeout(Statement stmt, Integer transactionTimeout) throws SQLException {
     Integer queryTimeout = null;
     if (mappedStatement.getTimeout() != null) {

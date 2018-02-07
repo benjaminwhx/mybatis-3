@@ -66,8 +66,7 @@ public interface SqlSession extends Closeable {
   <E> List<E> selectList(String statement, Object parameter);
 
   /**
-   * Retrieve a list of mapped objects from the statement key and parameter,
-   * within the specified row bounds.
+   * 获取数据的集合
    * @param <E> the returned list element type
    * @param statement Unique identifier matching the statement to use.
    * @param parameter A parameter object to pass to the statement.
@@ -144,8 +143,7 @@ public interface SqlSession extends Closeable {
   <T> Cursor<T> selectCursor(String statement, Object parameter, RowBounds rowBounds);
 
   /**
-   * Retrieve a single row mapped from the statement key and parameter
-   * using a {@code ResultHandler}.
+   * 查询，结果映射到handler
    * @param statement Unique identifier matching the statement to use.
    * @param parameter A parameter object to pass to the statement.
    * @param handler ResultHandler that will handle each retrieved row
@@ -161,9 +159,8 @@ public interface SqlSession extends Closeable {
   void select(String statement, ResultHandler handler);
 
   /**
-   * Retrieve a single row mapped from the statement key and parameter
-   * using a {@code ResultHandler} and {@code RowBounds}
-   * @param statement Unique identifier matching the statement to use.
+   * 查询，结果映射到handler
+   * @param statement 表达式id
    * @param rowBounds RowBound instance to limit the query results
    * @param handler ResultHandler that will handle each retrieved row
    */
@@ -177,12 +174,7 @@ public interface SqlSession extends Closeable {
   int insert(String statement);
 
   /**
-   * Execute an insert statement with the given parameter object. Any generated
-   * autoincrement values or selectKey entries will modify the given parameter
-   * object properties. Only the number of rows affected will be returned.
-   * @param statement Unique identifier matching the statement to execute.
-   * @param parameter A parameter object to pass to the statement.
-   * @return int The number of rows affected by the insert.
+   * MapperMethod中插入的主方法
    */
   int insert(String statement, Object parameter);
 
@@ -194,10 +186,8 @@ public interface SqlSession extends Closeable {
   int update(String statement);
 
   /**
-   * Execute an update statement. The number of rows affected will be returned.
-   * @param statement Unique identifier matching the statement to execute.
-   * @param parameter A parameter object to pass to the statement.
-   * @return int The number of rows affected by the update.
+   * 增删改都会走这个方法
+   * 更新主方法
    */
   int update(String statement, Object parameter);
 
@@ -209,10 +199,7 @@ public interface SqlSession extends Closeable {
   int delete(String statement);
 
   /**
-   * Execute a delete statement. The number of rows affected will be returned.
-   * @param statement Unique identifier matching the statement to execute.
-   * @param parameter A parameter object to pass to the statement.
-   * @return int The number of rows affected by the delete.
+   * 删除主方法
    */
   int delete(String statement, Object parameter);
 
@@ -251,24 +238,24 @@ public interface SqlSession extends Closeable {
   List<BatchResult> flushStatements();
 
   /**
-   * Closes the session
+   * 关闭session（可以在jdk7以后的try里新建，自动释放）
    */
   @Override
   void close();
 
   /**
-   * Clears local session cache
+   * 清除本地缓存
    */
   void clearCache();
 
   /**
-   * Retrieves current configuration
+   * 获取当前配置
    * @return Configuration
    */
   Configuration getConfiguration();
 
   /**
-   * Retrieves a mapper.
+   * 获得mapper接口的proxy类
    * @param <T> the mapper type
    * @param type Mapper interface class
    * @return a mapper bound to this SqlSession

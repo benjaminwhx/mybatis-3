@@ -31,19 +31,20 @@ public class StatementUtil {
   }
 
   /**
-   * Apply a transaction timeout.
-   * <p>
-   * Update a query timeout to apply a transaction timeout.
-   * </p>
-   * @param statement a target statement
-   * @param queryTimeout a query timeout
-   * @param transactionTimeout a transaction timeout
+   * 如果存在事务超时配置，重新设置queryTimeout
+   * 1、没有配置查询超时，设置查询超时为事务存活时间
+   * 2、如果配置了查询超时，但是事务存活时间 < 查询超时，设置事务存活时间
+   *
+   * @param statement 表达式
+   * @param queryTimeout 查询超时时间
+   * @param transactionTimeout 事务超时（注意：在mybatis-spring的事务中，这个参数代表的不是事务的超时时间，而是事务中剩下可存活的时间）
    * @throws SQLException if a database access error occurs, this method is called on a closed <code>Statement</code>
    */
   public static void applyTransactionTimeout(Statement statement, Integer queryTimeout, Integer transactionTimeout) throws SQLException {
     if (transactionTimeout == null){
       return;
     }
+    // 剩余查询超时时间
     Integer timeToLiveOfQuery = null;
     if (queryTimeout == null || queryTimeout == 0) {
       timeToLiveOfQuery = transactionTimeout;

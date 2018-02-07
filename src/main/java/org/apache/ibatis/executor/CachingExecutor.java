@@ -35,6 +35,8 @@ import org.apache.ibatis.transaction.Transaction;
 /**
  * @author Clinton Begin
  * @author Eduardo Macarron
+ *
+ * 二级缓存executor
  */
 public class CachingExecutor implements Executor {
 
@@ -163,6 +165,7 @@ public class CachingExecutor implements Executor {
 
   private void flushCacheIfRequired(MappedStatement ms) {
     Cache cache = ms.getCache();
+    // 自定义缓存
     if (cache != null && ms.isFlushCacheRequired()) {      
       tcm.clear(cache);
     }

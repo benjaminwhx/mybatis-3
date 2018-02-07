@@ -23,6 +23,10 @@ import org.apache.ibatis.reflection.ArrayUtil;
 
 /**
  * @author Clinton Begin
+ *
+ * 缓存key
+ * 一般缓存框架的数据结构基本上都是 Key-Value 方式存储，
+ * MyBatis 对于其 Key 的生成采取规则为：[mappedStementId + offset + limit + SQL + queryParams + environment]生成一个哈希码
  */
 public class CacheKey implements Cloneable, Serializable {
 
@@ -35,8 +39,9 @@ public class CacheKey implements Cloneable, Serializable {
 
   private final int multiplier;
   private int hashcode;
-  private long checksum;
-  private int count;
+  private long checksum;  // 所有字段baseHashCode的和
+  private int count;  // 操作次数
+
   // 8/21/2017 - Sonarlint flags this as needing to be marked transient.  While true if content is not serializable, this is not always true and thus should not be marked transient.
   private List<Object> updateList;
 
@@ -95,6 +100,8 @@ public class CacheKey implements Cloneable, Serializable {
       return false;
     }
 
+    //万一两个CacheKey的hash码碰巧一样，再根据对象严格equals来区分
+    //这里两个list的size没比是否相等，其实前面count相等就已经保证了
     for (int i = 0; i < updateList.size(); i++) {
       Object thisObject = updateList.get(i);
       Object thatObject = cacheKey.updateList.get(i);

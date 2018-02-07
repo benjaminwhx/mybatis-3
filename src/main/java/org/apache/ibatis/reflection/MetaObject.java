@@ -29,6 +29,9 @@ import org.apache.ibatis.reflection.wrapper.ObjectWrapperFactory;
 
 /**
  * @author Clinton Begin
+ *
+ * 元对象,各种get，set方法有点ognl表达式的味道
+ * 可以参考MetaObjectTest来跟踪调试，基本上用到了reflection包下所有的类
  */
 public class MetaObject {
 
@@ -45,14 +48,19 @@ public class MetaObject {
     this.reflectorFactory = reflectorFactory;
 
     if (object instanceof ObjectWrapper) {
+      //如果对象本身已经是ObjectWrapper型，则直接赋给objectWrapper
       this.objectWrapper = (ObjectWrapper) object;
-    } else if (objectWrapperFactory.hasWrapperFor(object)) {
+    } else if (objectWrapperFactory.hasWrapperFor(object)) {  // 默认false
+      //如果有包装器,调用ObjectWrapperFactory.getWrapperFor
       this.objectWrapper = objectWrapperFactory.getWrapperFor(this, object);
     } else if (object instanceof Map) {
+      //如果是Map型，返回MapWrapper
       this.objectWrapper = new MapWrapper(this, (Map) object);
     } else if (object instanceof Collection) {
+      //如果是Collection型，返回CollectionWrapper
       this.objectWrapper = new CollectionWrapper(this, (Collection) object);
     } else {
+      //除此以外，返回BeanWrapper
       this.objectWrapper = new BeanWrapper(this, object);
     }
   }
@@ -109,6 +117,11 @@ public class MetaObject {
     return objectWrapper.hasGetter(name);
   }
 
+    /**
+     * 取得值 如person[0].birthdate.year
+     * @param name
+     * @return
+     */
   public Object getValue(String name) {
     PropertyTokenizer prop = new PropertyTokenizer(name);
     if (prop.hasNext()) {
@@ -125,6 +138,7 @@ public class MetaObject {
 
   public void setValue(String name, Object value) {
     PropertyTokenizer prop = new PropertyTokenizer(name);
+    // name有.
     if (prop.hasNext()) {
       MetaObject metaValue = metaObjectForProperty(prop.getIndexedName());
       if (metaValue == SystemMetaObject.NULL_META_OBJECT) {

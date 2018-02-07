@@ -69,6 +69,7 @@ public class MapperMethod {
         break;
       }
       case SELECT:
+        // 方法返回void && 方法有ResultHandler
         if (method.returnsVoid() && method.hasResultHandler()) {
           executeWithResultHandler(sqlSession, args);
           result = null;
@@ -112,6 +113,11 @@ public class MapperMethod {
     return result;
   }
 
+  /**
+   * 调用有ResultHandler的select方法
+   * @param sqlSession
+   * @param args
+   */
   private void executeWithResultHandler(SqlSession sqlSession, Object[] args) {
     MappedStatement ms = sqlSession.getConfiguration().getMappedStatement(command.getName());
     if (!StatementType.CALLABLE.equals(ms.getStatementType())
@@ -121,6 +127,7 @@ public class MapperMethod {
           + " or a resultType attribute in XML so a ResultHandler can be used as a parameter.");
     }
     Object param = method.convertArgsToSqlCommandParam(args);
+    // 方法参数里有 RowBounds
     if (method.hasRowBounds()) {
       RowBounds rowBounds = method.extractRowBounds(args);
       sqlSession.select(command.getName(), param, rowBounds, method.extractResultHandler(args));
@@ -138,6 +145,7 @@ public class MapperMethod {
     } else {
       result = sqlSession.<E>selectList(command.getName(), param);
     }
+    // 解决返回类型不一致的问题
     // issue #510 Collections & arrays support
     if (!method.getReturnType().isAssignableFrom(result.getClass())) {
       if (method.getReturnType().isArray()) {
@@ -210,7 +218,9 @@ public class MapperMethod {
 
   public static class SqlCommand {
 
+    // 表达式id
     private final String name;
+    // sql执行类型
     private final SqlCommandType type;
 
     public SqlCommand(Configuration configuration, Class<?> mapperInterface, Method method) {
@@ -219,6 +229,7 @@ public class MapperMethod {
       MappedStatement ms = resolveMappedStatement(mapperInterface, methodName, declaringClass,
           configuration);
       if (ms == null) {
+        // 方法没有表达式，只有一个@Flush注解
         if (method.getAnnotation(Flush.class) != null) {
           name = null;
           type = SqlCommandType.FLUSH;
@@ -271,6 +282,7 @@ public class MapperMethod {
     private final boolean returnsVoid;
     private final boolean returnsCursor;
     private final Class<?> returnType;
+    // 返回值为map的key
     private final String mapKey;
     private final Integer resultHandlerIndex;
     private final Integer rowBoundsIndex;
@@ -295,6 +307,11 @@ public class MapperMethod {
       this.paramNameResolver = new ParamNameResolver(configuration, method);
     }
 
+    /**
+     * 转换参数为对应的值
+     * @param args
+     * @return
+     */
     public Object convertArgsToSqlCommandParam(Object[] args) {
       return paramNameResolver.getNamedParams(args);
     }
@@ -354,6 +371,11 @@ public class MapperMethod {
       return index;
     }
 
+    /**
+     * 方法返回值如果是map，查找方法上@MapKey的value值，作为map的key
+     * @param method
+     * @return
+     */
     private String getMapKey(Method method) {
       String mapKey = null;
       if (Map.class.isAssignableFrom(method.getReturnType())) {

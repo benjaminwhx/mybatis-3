@@ -25,6 +25,7 @@ public class Author implements Serializable {
   protected String email;
   protected String bio;
   protected Section favouriteSection;
+  protected String platPin;
 
   public Author() {
     this(-1, null, null, null, null, null);
@@ -89,6 +90,14 @@ public class Author implements Serializable {
 
   public Section getFavouriteSection() {
     return favouriteSection;
+  }
+
+  public String getPlatPin() {
+    return platPin;
+  }
+
+  public void setPlatPin(String platPin) {
+    this.platPin = platPin;
   }
 
   @Override

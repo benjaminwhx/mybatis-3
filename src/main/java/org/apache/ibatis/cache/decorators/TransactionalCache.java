@@ -35,13 +35,18 @@ import org.apache.ibatis.logging.LogFactory;
  * 
  * @author Clinton Begin
  * @author Eduardo Macarron
+ *
+ * 事务缓存
+ * 一次性存入多个缓存，移除多个缓存
  */
 public class TransactionalCache implements Cache {
 
   private static final Log log = LogFactory.getLog(TransactionalCache.class);
 
   private final Cache delegate;
+  //commit时要不要清缓存 默认不清
   private boolean clearOnCommit;
+  //commit时要添加的元素
   private final Map<Object, Object> entriesToAddOnCommit;
   private final Set<Object> entriesMissedInCache;
 
@@ -67,6 +72,7 @@ public class TransactionalCache implements Cache {
     // issue #116
     Object object = delegate.getObject(key);
     if (object == null) {
+      // 如果缓存中没有key对应的值，把key放入entriesMissedInCache
       entriesMissedInCache.add(key);
     }
     // issue #146
@@ -98,6 +104,11 @@ public class TransactionalCache implements Cache {
     entriesToAddOnCommit.clear();
   }
 
+  /**
+   * 1、如果事务缓存被clear了，commit的时候调用代理缓存clear
+   * 2、把pending的所有键值刷新到缓存中
+   * 3、重置
+   */
   public void commit() {
     if (clearOnCommit) {
       delegate.clear();
@@ -117,10 +128,14 @@ public class TransactionalCache implements Cache {
     entriesMissedInCache.clear();
   }
 
+  /**
+   * commit的时候flush缓冲的Entry
+   */
   private void flushPendingEntries() {
     for (Map.Entry<Object, Object> entry : entriesToAddOnCommit.entrySet()) {
       delegate.putObject(entry.getKey(), entry.getValue());
     }
+    // entriesMissedInCache的所有key也都放入缓存中，value是null
     for (Object entry : entriesMissedInCache) {
       if (!entriesToAddOnCommit.containsKey(entry)) {
         delegate.putObject(entry, null);

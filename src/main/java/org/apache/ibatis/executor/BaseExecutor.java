@@ -113,6 +113,7 @@ public abstract class BaseExecutor implements Executor {
     if (closed) {
       throw new ExecutorException("Executor was closed.");
     }
+    // 清除本地缓存
     clearLocalCache();
     return doUpdate(ms, parameter);
   }
@@ -140,19 +141,25 @@ public abstract class BaseExecutor implements Executor {
   @Override
   public <E> List<E> query(MappedStatement ms, Object parameter, RowBounds rowBounds, ResultHandler resultHandler, CacheKey key, BoundSql boundSql) throws SQLException {
     ErrorContext.instance().resource(ms.getResource()).activity("executing a query").object(ms.getId());
+    //如果已经关闭，报错
     if (closed) {
       throw new ExecutorException("Executor was closed.");
     }
+    //先清局部缓存，再查询.但仅查询堆栈为0，才清。为了处理递归调用
     if (queryStack == 0 && ms.isFlushCacheRequired()) {
       clearLocalCache();
     }
     List<E> list;
     try {
+      //加一,这样递归调用到上面的时候就不会再清局部缓存了
       queryStack++;
+      //先根据cachekey从localCache去查
       list = resultHandler == null ? (List<E>) localCache.getObject(key) : null;
       if (list != null) {
+        //若查到localCache缓存，处理localOutputParameterCache
         handleLocallyCachedOutputParameters(ms, key, parameter, boundSql);
       } else {
+        //从数据库查
         list = queryFromDatabase(ms, parameter, rowBounds, resultHandler, key, boundSql);
       }
     } finally {
@@ -196,6 +203,8 @@ public abstract class BaseExecutor implements Executor {
     if (closed) {
       throw new ExecutorException("Executor was closed.");
     }
+    // MyBatis 对于其 Key 的生成采取规则为：
+    // [mappedStementId + offset + limit + SQL + queryParams + environment]生成一个哈希码
     CacheKey cacheKey = new CacheKey();
     cacheKey.update(ms.getId());
     cacheKey.update(rowBounds.getOffset());
@@ -273,6 +282,17 @@ public abstract class BaseExecutor implements Executor {
   protected abstract List<BatchResult> doFlushStatements(boolean isRollback)
       throws SQLException;
 
+  /**
+   * 真正去数据库查询的方法
+   * @param ms
+   * @param parameter
+   * @param rowBounds
+   * @param resultHandler
+   * @param boundSql
+   * @param <E>
+   * @return
+   * @throws SQLException
+   */
   protected abstract <E> List<E> doQuery(MappedStatement ms, Object parameter, RowBounds rowBounds, ResultHandler resultHandler, BoundSql boundSql)
       throws SQLException;
 
@@ -321,13 +341,18 @@ public abstract class BaseExecutor implements Executor {
 
   private <E> List<E> queryFromDatabase(MappedStatement ms, Object parameter, RowBounds rowBounds, ResultHandler resultHandler, CacheKey key, BoundSql boundSql) throws SQLException {
     List<E> list;
+    //先向缓存中放入占位符？？？
     localCache.putObject(key, EXECUTION_PLACEHOLDER);
     try {
+      // 查询
       list = doQuery(ms, parameter, rowBounds, resultHandler, boundSql);
     } finally {
+      //最后删除占位符
       localCache.removeObject(key);
     }
+    //加入缓存
     localCache.putObject(key, list);
+    //如果是存储过程，OUT参数也加入缓存
     if (ms.getStatementType() == StatementType.CALLABLE) {
       localOutputParameterCache.putObject(key, parameter);
     }

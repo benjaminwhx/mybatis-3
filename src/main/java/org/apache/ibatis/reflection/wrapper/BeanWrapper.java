@@ -52,10 +52,14 @@ public class BeanWrapper extends BaseWrapper {
 
   @Override
   public void set(PropertyTokenizer prop, Object value) {
+    //如果有index,说明是集合，那就要解析集合,调用的是BaseWrapper.resolveCollection 和 setCollectionValue
     if (prop.getIndex() != null) {
+      // 解析集合类型
       Object collection = resolveCollection(prop, object);
+      // 给集合类型中设置值
       setCollectionValue(prop, collection, value);
     } else {
+      //否则，setBeanProperty
       setBeanProperty(prop, object, value);
     }
   }

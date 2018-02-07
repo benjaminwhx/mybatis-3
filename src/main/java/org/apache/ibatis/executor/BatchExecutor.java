@@ -42,7 +42,9 @@ public class BatchExecutor extends BaseExecutor {
 
   public static final int BATCH_UPDATE_RETURN_VALUE = Integer.MIN_VALUE + 1002;
 
+  // 多个statement的集合
   private final List<Statement> statementList = new ArrayList<Statement>();
+  // 多个statement处理的结果集合
   private final List<BatchResult> batchResultList = new ArrayList<BatchResult>();
   private String currentSql;
   private MappedStatement currentStatement;
@@ -84,6 +86,7 @@ public class BatchExecutor extends BaseExecutor {
       throws SQLException {
     Statement stmt = null;
     try {
+      // 刷新缓存中的statement到数据库
       flushStatements();
       Configuration configuration = ms.getConfiguration();
       StatementHandler handler = configuration.newStatementHandler(wrapper, ms, parameterObject, rowBounds, resultHandler, boundSql);

@@ -34,16 +34,38 @@ public interface Executor {
 
   ResultHandler NO_RESULT_HANDLER = null;
 
+  /**
+   * 更新主方法
+   * @param ms
+   * @param parameter
+   * @return
+   * @throws SQLException
+   */
   int update(MappedStatement ms, Object parameter) throws SQLException;
 
   <E> List<E> query(MappedStatement ms, Object parameter, RowBounds rowBounds, ResultHandler resultHandler, CacheKey cacheKey, BoundSql boundSql) throws SQLException;
 
+  /**
+   * 查询，结果映射到handler
+   * @param ms
+   * @param parameter 参数
+   * @param rowBounds
+   * @param resultHandler
+   * @param <E>
+   * @return
+   * @throws SQLException
+   */
   <E> List<E> query(MappedStatement ms, Object parameter, RowBounds rowBounds, ResultHandler resultHandler) throws SQLException;
 
   <E> Cursor<E> queryCursor(MappedStatement ms, Object parameter, RowBounds rowBounds) throws SQLException;
 
   List<BatchResult> flushStatements() throws SQLException;
 
+  /**
+   * 清除本地缓存 + 刷新statement
+   * @param required 是否需要事务commit
+   * @throws SQLException
+   */
   void commit(boolean required) throws SQLException;
 
   void rollback(boolean required) throws SQLException;
@@ -52,12 +74,19 @@ public interface Executor {
 
   boolean isCached(MappedStatement ms, CacheKey key);
 
+  /**
+   * 清除本地缓存
+   */
   void clearLocalCache();
 
   void deferLoad(MappedStatement ms, MetaObject resultObject, String property, CacheKey key, Class<?> targetType);
 
   Transaction getTransaction();
 
+  /**
+   * 是否需要强制回滚
+   * @param forceRollback
+   */
   void close(boolean forceRollback);
 
   boolean isClosed();

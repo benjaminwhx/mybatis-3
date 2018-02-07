@@ -43,16 +43,25 @@ import org.apache.ibatis.reflection.property.PropertyNamer;
  * allows for easy mapping between property names and getter/setter methods.
  *
  * @author Clinton Begin
+ * 反射器, 属性->getter/setter的映射器，而且加了缓存
+ * 可参考ReflectorTest来理解这个类的用处
  */
 public class Reflector {
 
   private final Class<?> type;
+  // getter的属性列表
   private final String[] readablePropertyNames;
+  // setter的属性列表
   private final String[] writeablePropertyNames;
+  // setter的方法列表
   private final Map<String, Invoker> setMethods = new HashMap<String, Invoker>();
+  // getter的方法列表
   private final Map<String, Invoker> getMethods = new HashMap<String, Invoker>();
+  // setter的类型列表
   private final Map<String, Class<?>> setTypes = new HashMap<String, Class<?>>();
+  // getter的类型列表
   private final Map<String, Class<?>> getTypes = new HashMap<String, Class<?>>();
+  // 默认构造函数
   private Constructor<?> defaultConstructor;
 
   private Map<String, String> caseInsensitivePropertyMap = new HashMap<String, String>();
@@ -73,6 +82,10 @@ public class Reflector {
     }
   }
 
+  /**
+   * 添加默认无参构造器
+   * @param clazz
+   */
   private void addDefaultConstructor(Class<?> clazz) {
     Constructor<?>[] consts = clazz.getDeclaredConstructors();
     for (Constructor<?> constructor : consts) {
@@ -92,9 +105,11 @@ public class Reflector {
   }
 
   private void addGetMethods(Class<?> cls) {
+    // key: 属性名 value: 属性对应的get is方法集合
     Map<String, List<Method>> conflictingGetters = new HashMap<String, List<Method>>();
     Method[] methods = getClassMethods(cls);
     for (Method method : methods) {
+      // 跳过有参数的方法
       if (method.getParameterTypes().length > 0) {
         continue;
       }
@@ -108,6 +123,10 @@ public class Reflector {
     resolveGetterConflicts(conflictingGetters);
   }
 
+  /**
+   * 解决多个get方法冲突问题，挑出最合适的get方法
+   * @param conflictingGetters
+   */
   private void resolveGetterConflicts(Map<String, List<Method>> conflictingGetters) {
     for (Entry<String, List<Method>> entry : conflictingGetters.entrySet()) {
       Method winner = null;
@@ -143,6 +162,11 @@ public class Reflector {
     }
   }
 
+  /**
+   * 缓存属性和对应的get方法
+   * @param name
+   * @param method
+   */
   private void addGetMethod(String name, Method method) {
     if (isValidPropertyName(name)) {
       getMethods.put(name, new MethodInvoker(method));
@@ -157,6 +181,7 @@ public class Reflector {
     for (Method method : methods) {
       String name = method.getName();
       if (name.startsWith("set") && name.length() > 3) {
+        // 只允许属性一个的放行
         if (method.getParameterTypes().length == 1) {
           name = PropertyNamer.methodToProperty(name);
           addMethodConflict(conflictingSetters, name, method);
@@ -178,6 +203,7 @@ public class Reflector {
   private void resolveSetterConflicts(Map<String, List<Method>> conflictingSetters) {
     for (String propName : conflictingSetters.keySet()) {
       List<Method> setters = conflictingSetters.get(propName);
+      // 获取get方法的返回值类
       Class<?> getterType = getTypes.get(propName);
       Method match = null;
       ReflectionException exception = null;
@@ -206,6 +232,13 @@ public class Reflector {
     }
   }
 
+  /**
+   * 挑选最合适的set方法，有可能set的参数类型和get返回的参数类型是父子类关系
+   * @param setter1
+   * @param setter2
+   * @param property
+   * @return
+   */
   private Method pickBetterSetter(Method setter1, Method setter2, String property) {
     if (setter1 == null) {
       return setter2;
@@ -222,6 +255,11 @@ public class Reflector {
         + paramType2.getName() + "'.");
   }
 
+  /**
+   * 缓存属性和对应的set方法
+   * @param name
+   * @param method
+   */
   private void addSetMethod(String name, Method method) {
     if (isValidPropertyName(name)) {
       setMethods.put(name, new MethodInvoker(method));
@@ -262,11 +300,13 @@ public class Reflector {
         }
       }
       if (field.isAccessible()) {
+        // 如果属性没有get和set方法，缓存一个反射执行器来设置和获取值
         if (!setMethods.containsKey(field.getName())) {
           // issue #379 - removed the check for final because JDK 1.5 allows
           // modification of final fields through reflection (JSR-133). (JGB)
           // pr #16 - final static can only be set by the classloader
           int modifiers = field.getModifiers();
+          // final static 只能被classloader进行set
           if (!(Modifier.isFinal(modifiers) && Modifier.isStatic(modifiers))) {
             addSetField(field);
           }
@@ -276,11 +316,16 @@ public class Reflector {
         }
       }
     }
+    // 递归父类
     if (clazz.getSuperclass() != null) {
       addFields(clazz.getSuperclass());
     }
   }
 
+  /**
+   * 缓存属性和属性设置执行器，用反射set值给属性
+   * @param field
+   */
   private void addSetField(Field field) {
     if (isValidPropertyName(field.getName())) {
       setMethods.put(field.getName(), new SetFieldInvoker(field));
@@ -289,6 +334,10 @@ public class Reflector {
     }
   }
 
+  /**
+   * 缓存属性和属性获取执行器，用反射进行get值
+   * @param field
+   */
   private void addGetField(Field field) {
     if (isValidPropertyName(field.getName())) {
       getMethods.put(field.getName(), new GetFieldInvoker(field));
@@ -306,6 +355,7 @@ public class Reflector {
    * declared in this class and any superclass.
    * We use this method, instead of the simpler Class.getMethods(),
    * because we want to look for private methods as well.
+   * 得到所有方法，包括private方法，包括父类方法.包括接口方法
    *
    * @param cls The class
    * @return An array containing all methods in this class
@@ -316,8 +366,7 @@ public class Reflector {
     while (currentClass != null && currentClass != Object.class) {
       addUniqueMethods(uniqueMethods, currentClass.getDeclaredMethods());
 
-      // we also need to look for interface methods -
-      // because the class may be abstract
+      // 检查接口，类可能是abstract类
       Class<?>[] interfaces = currentClass.getInterfaces();
       for (Class<?> anInterface : interfaces) {
         addUniqueMethods(uniqueMethods, anInterface.getMethods());
@@ -331,6 +380,11 @@ public class Reflector {
     return methods.toArray(new Method[methods.size()]);
   }
 
+  /**
+   * 放入uniqueMethods签名和方法
+   * @param uniqueMethods
+   * @param methods
+   */
   private void addUniqueMethods(Map<String, Method> uniqueMethods, Method[] methods) {
     for (Method currentMethod : methods) {
       if (!currentMethod.isBridge()) {
@@ -353,6 +407,12 @@ public class Reflector {
     }
   }
 
+  /**
+   * 返回方法的签名，格式如下
+   * returnType#methodName:parameter1,parameter2,parameter3
+   * @param method
+   * @return
+   */
   private String getSignature(Method method) {
     StringBuilder sb = new StringBuilder();
     Class<?> returnType = method.getReturnType();

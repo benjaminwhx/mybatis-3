@@ -20,12 +20,27 @@ package org.apache.ibatis.session;
  */
 public interface ResultContext<T> {
 
+  /**
+   * 返回值结果
+   * @return
+   */
   T getResultObject();
 
+  /**
+   * 返回值的数量
+   * @return
+   */
   int getResultCount();
 
+  /**
+   * 是不是停止
+   * @return
+   */
   boolean isStopped();
 
+  /**
+   * 停止
+   */
   void stop();
 
 }

@@ -302,4 +302,39 @@ public class MetaObjectTest {
     assertTrue(meta.hasGetter("filterParams[2]"));
   }
 
+  @Test
+  public void testPerson() {
+    Person person = new Person();
+    Author author = new Author();
+    author.setEmail("sfsdf@sina.com");
+    author.setId(23234);
+    author.setPassword("3hk23jh4");
+    author.setUsername("benjamin");
+    author.setPlatPin("platPin_author");
+    person.setAuthor(author);
+    person.setPlatPin("platPin");
+    MetaObject metaObject = SystemMetaObject.forObject(person);
+    System.out.println(metaObject.getValue("author.platPin"));
+  }
+
+  static class Person {
+    private String platPin;
+    private Author author;
+
+    public String getPlatPin() {
+      return platPin;
+    }
+
+    public void setPlatPin(String platPin) {
+      this.platPin = platPin;
+    }
+
+    public Author getAuthor() {
+      return author;
+    }
+
+    public void setAuthor(Author author) {
+      this.author = author;
+    }
+  }
 }
